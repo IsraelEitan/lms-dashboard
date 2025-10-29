@@ -1,0 +1,22 @@
+# dotnet
+bin/
+obj/
+*.user
+*.suo
+*.svclog
+
+# node
+node_modules/
+dist/
+.next/
+.vite/
+*.log
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# env
+.env
+.env.*
