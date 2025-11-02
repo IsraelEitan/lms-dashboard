@@ -16,7 +16,7 @@ A modern, production-ready Learning Management System built with **ASP.NET Core 
 While this started as an assignment, I wanted to showcase a **complete, professional solution** that goes beyond basic requirements. This is the kind of architecture and code quality I deliver in production environments.
 
 **Key Philosophy:**
-- This is a demo with in-memory storage, but the **architecture is production-ready**
+- This is a demo with in-memory storage, but the **architecture is "production-ready"**
 - Every pattern here (Result, Idempotency, Clean Architecture, Structured Logging) I've used in real systems handling millions of users
 - The goal isn't just to "make it work" - it's to demonstrate **how I think about scalability, maintainability, and professional development**
 
