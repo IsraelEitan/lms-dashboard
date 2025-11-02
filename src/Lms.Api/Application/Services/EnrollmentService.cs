@@ -51,6 +51,16 @@ internal sealed class EnrollmentService : IEnrollmentService
     );
   }
 
+  private async Task<List<EnrollmentDto>> ToDtosAsync(IEnumerable<Enrollment> enrollments, CancellationToken ct)
+  {
+    var result = new List<EnrollmentDto>();
+    foreach (var enrollment in enrollments)
+    {
+      result.Add(await ToDto(enrollment, ct));
+    }
+    return result;
+  }
+
   public async Task<Result<PagedResult<EnrollmentDto>>> QueryAsync(PagingQuery query, CancellationToken ct)
   {
     var list = _enrollments.Values.AsEnumerable();
@@ -115,40 +125,22 @@ internal sealed class EnrollmentService : IEnrollmentService
   public async Task<Result<IReadOnlyList<EnrollmentDto>>> GetAllAsync(CancellationToken ct)
   {
     var enrollments = _enrollments.Values.ToList();
-    var result = new List<EnrollmentDto>();
-    
-    foreach (var enrollment in enrollments)
-    {
-      result.Add(await ToDto(enrollment, ct));
-    }
-
-    return Result<IReadOnlyList<EnrollmentDto>>.Success(result.AsReadOnly());
+    var dtos = await ToDtosAsync(enrollments, ct);
+    return Result<IReadOnlyList<EnrollmentDto>>.Success(dtos.AsReadOnly());
   }
 
   public async Task<Result<IReadOnlyList<EnrollmentDto>>> GetByCourseAsync(Guid courseId, CancellationToken ct)
   {
     var enrollments = _enrollments.Values.Where(e => e.CourseId == courseId).ToList();
-    var result = new List<EnrollmentDto>();
-    
-    foreach (var enrollment in enrollments)
-    {
-      result.Add(await ToDto(enrollment, ct));
-    }
-
-    return Result<IReadOnlyList<EnrollmentDto>>.Success(result.AsReadOnly());
+    var dtos = await ToDtosAsync(enrollments, ct);
+    return Result<IReadOnlyList<EnrollmentDto>>.Success(dtos.AsReadOnly());
   }
 
   public async Task<Result<IReadOnlyList<EnrollmentDto>>> GetByStudentAsync(Guid studentId, CancellationToken ct)
   {
     var enrollments = _enrollments.Values.Where(e => e.StudentId == studentId).ToList();
-    var result = new List<EnrollmentDto>();
-    
-    foreach (var enrollment in enrollments)
-    {
-      result.Add(await ToDto(enrollment, ct));
-    }
-
-    return Result<IReadOnlyList<EnrollmentDto>>.Success(result.AsReadOnly());
+    var dtos = await ToDtosAsync(enrollments, ct);
+    return Result<IReadOnlyList<EnrollmentDto>>.Success(dtos.AsReadOnly());
   }
 
   /// <summary>

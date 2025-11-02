@@ -88,17 +88,10 @@ internal sealed class DataSeeder
       new() { Name = "Aviv Kalanik", Email = "aviv.kalanik@university.il" }
     };
 
-    var studentIds = new List<Guid>();
-    foreach (var student in students)
-    {
-      var result = await _students.CreateAsync(student, ct);
-      if (result.IsSuccess)
-      {
-        studentIds.Add(result.Value.Id);
-      }
-    }
-
-    return studentIds;
+    return await SeedEntitiesAsync(
+      students,
+      async (student, token) => await _students.CreateAsync(student, token)
+    );
   }
 
   private async Task<List<Guid>> SeedCoursesAsync(CancellationToken ct)
@@ -119,17 +112,35 @@ internal sealed class DataSeeder
       new() { Code = "PSY101", Title = "Introduction to Psychology", Description = "Human behavior and mental processes" }
     };
 
-    var courseIds = new List<Guid>();
-    foreach (var course in courses)
+    return await SeedEntitiesAsync(
+      courses,
+      async (course, token) => await _courses.CreateAsync(course, token)
+    );
+  }
+
+  private async Task<List<Guid>> SeedEntitiesAsync<TDto, TResult>(
+    List<TDto> items,
+    Func<TDto, CancellationToken, Task<Common.Results.Result<TResult>>> createFunc)
+  {
+    var ids = new List<Guid>();
+    foreach (var item in items)
     {
-      var result = await _courses.CreateAsync(course, ct);
+      var result = await createFunc(item, default);
       if (result.IsSuccess)
       {
-        courseIds.Add(result.Value.Id);
+        // Extract Id using reflection (works for DTOs with Id property)
+        var idProperty = typeof(TResult).GetProperty("Id");
+        if (idProperty != null)
+        {
+          var boxedValue = (object)result.Value!;
+          if (idProperty.GetValue(boxedValue) is Guid id)
+          {
+            ids.Add(id);
+          }
+        }
       }
     }
-
-    return courseIds;
+    return ids;
   }
 
   private async Task SeedEnrollmentsAsync(List<Guid> studentIds, List<Guid> courseIds, CancellationToken ct)

@@ -42,55 +42,34 @@ internal sealed class CourseService : ICourseService
 
     list ??= Array.Empty<Course>();
 
-    if (!string.IsNullOrWhiteSpace(query.Search))
-    {
-      list = list.Where(c =>
-              (c.Title?.Contains(query.Search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-              (c.Code?.Contains(query.Search, StringComparison.OrdinalIgnoreCase) ?? false))
-          .ToList().AsReadOnly();
-    }
-
-    if (!string.IsNullOrWhiteSpace(query.Sort))
-    {
-      var keys = query.Sort.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-      IOrderedEnumerable<Course> ordered = keys[0].StartsWith('-')
-          ? list.OrderByDescending(c => SortKey(c, keys[0][1..]))
-          : list.OrderBy(c => SortKey(c, keys[0]));
-
-      foreach (var k in keys.Skip(1))
-      {
-        ordered = k.StartsWith('-')
-            ? ordered.ThenByDescending(c => SortKey(c, k[1..]))
-            : ordered.ThenBy(c => SortKey(c, k));
-      }
-
-      list = ordered.ToList().AsReadOnly();
-
-      static object? SortKey(Course c, string key) => key switch
-      {
-        "code" => c.Code,
-        "title" => c.Title,
-        _ => c.Id
-      };
-    }
-
-    var page = Math.Max(1, query.Page);
-    var size = Math.Clamp(query.PageSize, 1, 100);
-    var total = list.Count;
-    var totalPages = (int)Math.Ceiling((double)total / size);
-    var items = list.Skip((page - 1) * size).Take(size)
-                    .Select(c => new CourseDto(c.Id, c.Code, c.Title, c.Description))
-                    .ToList();
-
-    var payload = new PagedResult<CourseDto>(
-        items, 
-        page, 
-        size, 
-        totalPages, 
-        total,
-        page > 1,
-        page < totalPages
+    // Apply search filter
+    var filtered = QueryHelper<Course>.ApplySearch(
+      list,
+      query,
+      (course, searchTerm) =>
+        (course.Title?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (course.Code?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
     );
+
+    // Apply sorting
+    var sorted = QueryHelper<Course>.ApplySort(
+      filtered,
+      query,
+      (course, key) => key switch
+      {
+        "code" => course.Code,
+        "title" => course.Title,
+        _ => course.Id
+      }
+    );
+
+    // Apply pagination
+    var payload = QueryHelper<Course>.ApplyPagination(
+      sorted,
+      query,
+      course => new CourseDto(course.Id, course.Code, course.Title, course.Description)
+    );
+
     return Task.FromResult(Result<PagedResult<CourseDto>>.Success(payload));
   }
 
@@ -132,18 +111,20 @@ internal sealed class CourseService : ICourseService
   public Task<Result<CourseDto>> CreateAsync(CreateUpdateCourseDto dto, CancellationToken ct)
   {
     // Validate required fields
-    if (string.IsNullOrWhiteSpace(dto.Code))
+    var codeValidation = ValidationHelper.ValidateCourseCode(dto.Code);
+    if (!codeValidation.IsSuccess)
     {
-      return Task.FromResult(Result<CourseDto>.Failure(Errors.Course.CodeRequired));
+      return Task.FromResult(Result<CourseDto>.Failure(codeValidation.Error));
     }
 
-    if (string.IsNullOrWhiteSpace(dto.Title))
+    var titleValidation = ValidationHelper.ValidateCourseTitle(dto.Title);
+    if (!titleValidation.IsSuccess)
     {
-      return Task.FromResult(Result<CourseDto>.Failure(Errors.Course.TitleRequired));
+      return Task.FromResult(Result<CourseDto>.Failure(titleValidation.Error));
     }
 
     // Normalize and validate uniqueness of course code
-    var code = dto.Code.Trim();
+    var code = dto.Code!.Trim();
     if (_courses.Values.Any(x => string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase)))
     {
       return Task.FromResult(Result<CourseDto>.Failure(Errors.Course.DuplicateCode(code)));
@@ -153,7 +134,7 @@ internal sealed class CourseService : ICourseService
     var course = new Course
     {
       Code = code,
-      Title = dto.Title.Trim(),
+      Title = dto.Title!.Trim(),
       Description = dto.Description?.Trim()
     };
 

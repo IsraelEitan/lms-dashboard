@@ -42,55 +42,34 @@ internal sealed class StudentService : IStudentService
 
     list ??= Array.Empty<Student>();
 
-    if (!string.IsNullOrWhiteSpace(query.Search))
-    {
-      list = list.Where(s =>
-              (s.Name?.Contains(query.Search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-              (s.Email?.Contains(query.Search, StringComparison.OrdinalIgnoreCase) ?? false))
-          .ToList().AsReadOnly();
-    }
-
-    if (!string.IsNullOrWhiteSpace(query.Sort))
-    {
-      var keys = query.Sort.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-      IOrderedEnumerable<Student> ordered = keys[0].StartsWith('-')
-          ? list.OrderByDescending(s => SortKey(s, keys[0][1..]))
-          : list.OrderBy(s => SortKey(s, keys[0]));
-
-      foreach (var k in keys.Skip(1))
-      {
-        ordered = k.StartsWith('-')
-            ? ordered.ThenByDescending(s => SortKey(s, k[1..]))
-            : ordered.ThenBy(s => SortKey(s, k));
-      }
-
-      list = ordered.ToList().AsReadOnly();
-
-      static object? SortKey(Student s, string key) => key switch
-      {
-        "name" => s.Name,
-        "email" => s.Email,
-        _ => s.Id
-      };
-    }
-
-    var page = Math.Max(1, query.Page);
-    var size = Math.Clamp(query.PageSize, 1, 100);
-    var total = list.Count;
-    var totalPages = (int)Math.Ceiling((double)total / size);
-    var items = list.Skip((page - 1) * size).Take(size)
-                    .Select(s => new StudentDto(s.Id, s.Name, s.Email))
-                    .ToList();
-
-    var payload = new PagedResult<StudentDto>(
-        items, 
-        page, 
-        size, 
-        totalPages, 
-        total,
-        page > 1,
-        page < totalPages
+    // Apply search filter
+    var filtered = QueryHelper<Student>.ApplySearch(
+      list,
+      query,
+      (student, searchTerm) =>
+        (student.Name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (student.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
     );
+
+    // Apply sorting
+    var sorted = QueryHelper<Student>.ApplySort(
+      filtered,
+      query,
+      (student, key) => key switch
+      {
+        "name" => student.Name,
+        "email" => student.Email,
+        _ => student.Id
+      }
+    );
+
+    // Apply pagination
+    var payload = QueryHelper<Student>.ApplyPagination(
+      sorted,
+      query,
+      student => new StudentDto(student.Id, student.Name, student.Email)
+    );
+
     return Task.FromResult(Result<PagedResult<StudentDto>>.Success(payload));
   }
 
@@ -132,21 +111,23 @@ internal sealed class StudentService : IStudentService
   public Task<Result<StudentDto>> CreateAsync(CreateStudentDto dto, CancellationToken ct)
   {
     // Validate required fields
-    if (string.IsNullOrWhiteSpace(dto.Name))
+    var nameValidation = ValidationHelper.ValidateName(dto.Name);
+    if (!nameValidation.IsSuccess)
     {
-      return Task.FromResult(Result<StudentDto>.Failure(Errors.Common.Validation("Name is required")));
+      return Task.FromResult(Result<StudentDto>.Failure(nameValidation.Error));
     }
 
-    if (string.IsNullOrWhiteSpace(dto.Email))
+    var emailValidation = ValidationHelper.ValidateEmail(dto.Email);
+    if (!emailValidation.IsSuccess)
     {
-      return Task.FromResult(Result<StudentDto>.Failure(Errors.Student.InvalidEmail(dto.Email ?? string.Empty)));
+      return Task.FromResult(Result<StudentDto>.Failure(emailValidation.Error));
     }
 
     // Create new student entity with validated data
     var s = new Student
     {
-      Name = dto.Name.Trim(),
-      Email = dto.Email.Trim()
+      Name = dto.Name!.Trim(),
+      Email = dto.Email!.Trim()
     };
 
     // Persist to repository and update cache
@@ -168,14 +149,16 @@ internal sealed class StudentService : IStudentService
   public Task<Result<StudentDto>> UpdateAsync(Guid id, UpdateStudentDto dto, CancellationToken ct)
   {
     // Validate required fields
-    if (string.IsNullOrWhiteSpace(dto.Name))
+    var nameValidation = ValidationHelper.ValidateName(dto.Name);
+    if (!nameValidation.IsSuccess)
     {
-      return Task.FromResult(Result<StudentDto>.Failure(Errors.Common.Validation("Name is required")));
+      return Task.FromResult(Result<StudentDto>.Failure(nameValidation.Error));
     }
 
-    if (string.IsNullOrWhiteSpace(dto.Email))
+    var emailValidation = ValidationHelper.ValidateEmail(dto.Email);
+    if (!emailValidation.IsSuccess)
     {
-      return Task.FromResult(Result<StudentDto>.Failure(Errors.Student.InvalidEmail(dto.Email ?? string.Empty)));
+      return Task.FromResult(Result<StudentDto>.Failure(emailValidation.Error));
     }
 
     // Check if student exists
@@ -185,7 +168,7 @@ internal sealed class StudentService : IStudentService
     }
 
     // Update student entity
-    student.Update(dto.Name.Trim(), dto.Email.Trim());
+    student.Update(dto.Name!.Trim(), dto.Email!.Trim());
 
     // Update cache
     _cache.Remove(Constants.CacheKeys.Students.All);

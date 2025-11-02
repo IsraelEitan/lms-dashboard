@@ -83,7 +83,19 @@ public sealed class CoursesController : ControllerBase
   [ProducesResponseType(StatusCodes.Status409Conflict)]
   public async Task<ActionResult> Update(Guid id, [FromBody] CreateUpdateCourseDto dto, CancellationToken ct)
   {
+    _logger.LogInformation("[PUT] /courses/{Id} - Updating course: {Code} - {Title}", id, dto.Code, dto.Title);
+    
     var result = await _courses.UpdateAsync(id, dto, ct);
+    
+    if (result.IsSuccess)
+    {
+      _logger.LogInformation("Course updated successfully: {Id}", id);
+    }
+    else
+    {
+      _logger.LogWarning("Failed to update course: {Id}, Error: {Error}", id, result.Error);
+    }
+    
     return this.ToActionResult(result);
   }
 
