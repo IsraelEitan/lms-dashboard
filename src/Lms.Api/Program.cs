@@ -96,6 +96,7 @@ builder.Services.AddCors(opt =>
 builder.Services.AddSingleton<ICourseService, CourseService>();
 builder.Services.AddSingleton<IStudentService, StudentService>();
 builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
+builder.Services.AddSingleton<IReportService, ReportService>();
 
 // DI: AWS S3 mock service (simulates AWS S3 without actual AWS SDK)
 builder.Services.AddSingleton<IS3Service, MockS3Service>();

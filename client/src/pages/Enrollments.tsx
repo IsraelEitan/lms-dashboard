@@ -27,9 +27,9 @@ const Enrollments = () => {
     handlePageChange,
     handleCloseModal,
   } = useCrudPage<Enrollment>({
-    loadItems: apiService.getEnrollments,
-    createItem: apiService.createEnrollment,
-    deleteItem: apiService.deleteEnrollment,
+    loadItems: (page, pageSize) => apiService.getEnrollments(page, pageSize),
+    createItem: (data) => apiService.createEnrollment(data),
+    deleteItem: (id) => apiService.deleteEnrollment(id),
   });
 
   if (loading && !enrollments) {

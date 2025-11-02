@@ -1,10 +1,12 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 
 const Sidebar = () => {
   return (
     <nav className="nav-sidebar">
       <div className="nav-header">
-        <div className="nav-logo">🎓 LMS Dashboard</div>
+        <Link to="/" className="nav-logo" style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
+          🎓 LMS Dashboard
+        </Link>
       </div>
       <ul className="nav-menu">
         <li className="nav-item">

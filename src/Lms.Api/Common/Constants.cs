@@ -78,4 +78,12 @@ public static class Constants
     public const string MissingKeyError = "Idempotency-Key header is required for this operation";
     public const string InvalidKeyError = "Idempotency-Key must be between 1 and 255 characters";
   }
+
+  public static class Reports
+  {
+    public const string BucketName = "lms-reports";
+    public const string ExportPrefix = "reports/";
+    public const string JsonContentType = "application/json";
+    public const string TimestampFormat = "yyyy-MM-dd_HHmmss";
+  }
 }

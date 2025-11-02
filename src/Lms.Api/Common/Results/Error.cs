@@ -38,6 +38,9 @@ public static class Errors
 
         public static Error Validation(string message) =>
             new("common.validation", message, 422);
+
+        public static Error NotFound(string message) =>
+            new("common.not_found", message, 404);
     }
 
     /// <summary>Course-related errors.</summary>

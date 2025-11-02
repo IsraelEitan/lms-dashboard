@@ -41,6 +41,7 @@ export function useCrudPage<T extends { id: string }>(config: CrudPageConfig<T>)
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
   const handleCreate = () => {

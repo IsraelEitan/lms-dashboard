@@ -29,10 +29,10 @@ const Students = () => {
     handlePageChange,
     handleCloseModal,
   } = useCrudPage<Student>({
-    loadItems: apiService.getStudents,
-    createItem: apiService.createStudent,
-    updateItem: apiService.updateStudent,
-    deleteItem: apiService.deleteStudent,
+    loadItems: (page, pageSize) => apiService.getStudents(page, pageSize),
+    createItem: (data) => apiService.createStudent(data),
+    updateItem: (id, data) => apiService.updateStudent(id, data),
+    deleteItem: (id) => apiService.deleteStudent(id),
   });
 
   if (loading && !students) {
